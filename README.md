@@ -1,41 +1,17 @@
-# Aplicación Web Interna – Piloto
+# Gestor Home Office - Contratos (MVP)
 
-Aplicación web interna desarrollada en Python utilizando Flask.  
-El objetivo es validar el uso con la gerencia en una primera etapa, con un alcance acotado y sin exposición a internet.
+Aplicación web interna para gestionar presencialidad (P/H) por empleado y día, con:
+- Toggle por celda (P <-> H)
+- Totales por día
+- Límite: máximo 8 presenciales por día (solo Contratos)
+- Reset semana (todo blanco)
+- Persistencia local en `data.json`
 
-## Alcance
-- Uso interno.
-- Un usuario principal (gerencia) y acceso eventual del desarrollador.
-- No maneja credenciales corporativas ni datos sensibles.
-- Persistencia local de datos (archivo JSON).
-
-## Tecnologías
+## Requisitos
 - Python 3.x
-- Flask
-- Waitress (para ejecución en entorno Windows)
+- Flask (ver `requirements.txt`)
 
-## Estructura del proyecto
-- app.py: archivo principal de la aplicación.
-- templates/: vistas HTML utilizadas por Flask.
-- data/: carpeta destinada a persistencia local (no versionada).
-
-## Ejecución (entorno local / piloto)
-1. Crear entorno virtual (opcional).
-2. Instalar dependencias:
-   pip install -r requirements.txt
-3. Ejecutar la aplicación:
-   python app.py  
-   o bien  
-   waitress-serve --host=0.0.0.0 --port=8080 app:app
-
-## Configuración
-La aplicación utiliza variables de entorno para configuración sensible.
-Ejemplo:
-- SECRET_KEY
-- DATA_PATH
-
-Ver archivo .env.example.
-
-## Notas
-Este repositorio corresponde a un piloto interno.  
-En caso de adopción, se prevé una evolución a una versión formal con autenticación corporativa y almacenamiento en base de datos gestionada.
+## Ejecutar local
+```bash
+pip install -r requirements.txt
+python app.py
