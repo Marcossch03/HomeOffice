@@ -1,230 +1,248 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta charset="UTF-8">
-<style>
-    /* --- ESTILOS GENERALES --- */
-    body {
-        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        padding: 20px;
-        background-color: #ffffff;
-    }
-    h2 { color: #333; border-bottom: 2px solid #007bff; padding-bottom: 10px; }
-
-    /* --- TABLA --- */
-    .tabla-container { overflow-x: auto; margin-bottom: 60px; /* Espacio para no tapar con el botón */ }
-    table { width: 100%; border-collapse: collapse; margin-top: 15px; box-shadow: 0 0 20px rgba(0, 0, 0, 0.1); }
-    th, td { padding: 12px 15px; text-align: center; border-bottom: 1px solid #ddd; }
-    th { background-color: #f8f9fa; color: #333; font-weight: bold; border-top: 3px solid #007bff; }
-    td:first-child { text-align: left; font-weight: 600; color: #555; background-color: #fff; min-width: 150px; }
-
-    /* --- BOTONES DE ASISTENCIA --- */
-    .btn-cell { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; background-color: #fff; cursor: pointer; transition: all 0.2s; font-size: 14px; }
-    .btn-cell:hover { background-color: #e9ecef; }
-    .presente { background-color: #28a745; color: white; border-color: #28a745; font-weight: bold; }
-    .presente:hover { background-color: #218838; }
-
-    /* --- INDICADORES Y STATUS --- */
-    .cupo-lleno { color: #dc3545; } 
-    .cupo-ok { color: #28a745; }   
+    <meta charset="UTF-8">
+    <title>Gestión de Home Office - Contratos</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     
-    #status { margin-bottom: 15px; font-weight: bold; padding: 10px; border-radius: 4px; display: none; text-align: center; }
-    .loading { background-color: #e2e6ea; color: #007bff; display: block !important; }
-    .error { background-color: #f8d7da; color: #721c24; display: block !important; }
-    .success { background-color: #d4edda; color: #155724; display: block !important; }
-
-    /* --- BOTÓN PRINCIPAL RESET --- */
-    .btn-reset {
-        margin-top: 20px;
-        background-color: #dc3545;
-        color: white;
-        border: none;
-        padding: 10px 20px;
-        border-radius: 5px;
-        cursor: pointer;
-        float: right;
-        font-size: 14px;
-        font-weight: bold;
-    }
-    .btn-reset:hover { background-color: #c82333; }
-
-    /* --- MODAL PROPIO (CSS) --- */
-    .modal-overlay {
-        position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-        background-color: rgba(0, 0, 0, 0.5); /* Fondo oscuro transparente */
-        display: none; /* Oculto por defecto */
-        justify-content: center; align-items: center;
-        z-index: 1000;
-    }
-    
-    .modal-box {
-        background: white; padding: 25px; border-radius: 8px;
-        box-shadow: 0 5px 15px rgba(0,0,0,0.3);
-        text-align: center; max-width: 300px; width: 90%;
-    }
-
-    .modal-buttons { margin-top: 20px; display: flex; justify-content: space-around; }
-
-    .btn-cancelar { background-color: #6c757d; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; }
-    .btn-confirmar { background-color: #dc3545; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-weight: bold;}
-    
-</style>
+    <style>
+        /* Estilos adicionales para feedback visual */
+        #loading-overlay {
+            display: none;
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(255,255,255,0.8);
+            z-index: 2000;
+            justify-content: center; align-items: center; flex-direction: column;
+        }
+        .main-container { display: none; } /* Se oculta hasta cargar datos */
+    </style>
 </head>
-<body>
+<body class="bg-light">
 
-    <h2>Gestión de Contratos</h2>
-    
-    <div id="status"></div>
+<div id="loading-overlay">
+    <div class="spinner-border text-primary mb-2" role="status"></div>
+    <div id="loading-text" class="fw-bold text-secondary">Conectando...</div>
+</div>
 
-    <div class="tabla-container">
-        <div id="app"></div>
+<div class="container py-4 main-container" id="app-container">
+
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <div>
+            <h1 class="h3 mb-1">Gerencia: CONTRATOS</h1>
+            <p class="text-muted mb-0">Marcá presencialidad (máximo <span id="max-text" class="fw-bold">--</span> por día).</p>
+        </div>
+
+        <button type="button" class="btn btn-outline-danger btn-sm" data-bs-toggle="modal" data-bs-target="#modalReset">
+            ⚠ Reset semana
+        </button>
     </div>
 
-    <button id="btnOpenModal" class="btn-reset">⚠ Resetear Semana</button>
-
-    <div id="modalConfirm" class="modal-overlay">
-        <div class="modal-box">
-            <h3 style="margin-top:0; color:#dc3545;">¿Estás seguro?</h3>
-            <p style="color:#666; font-size:14px;">Se borrarán <b>todas</b> las asistencias de la semana. Esta acción no se puede deshacer.</p>
-            <div class="modal-buttons">
-                <button class="btn-cancelar" onclick="cerrarModal()">Cancelar</button>
-                <button class="btn-confirmar" onclick="confirmarReset()">Sí, Eliminar Todo</button>
+    <div class="card shadow-sm">
+        <div class="card-body">
+            
+            <div class="d-flex justify-content-between mb-2">
+                <div class="text-muted small">
+                    <span class="badge bg-success">P</span> Presencial
+                    <span class="badge bg-secondary ms-2">H</span> Home
+                </div>
+                <div id="status-msg" class="small fw-bold text-success" style="opacity:0; transition: opacity 0.5s;">Guardado</div>
             </div>
+
+            <div class="table-responsive">
+                <table class="table table-bordered align-middle text-center">
+                    <thead class="table-light">
+                        <tr id="table-head-row"></tr>
+                    </thead>
+                    <tbody id="table-body"></tbody>
+                    <tfoot class="table-secondary">
+                        <tr id="table-foot-row"></tr>
+                    </tfoot>
+                </table>
+            </div>
+
         </div>
     </div>
+</div>
+
+<div class="modal fade" id="modalReset" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header bg-danger text-white">
+        <h5 class="modal-title">¿Estás seguro?</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <p>Se borrarán <b>todas</b> las asistencias de la semana actual para todos los empleados.</p>
+        <p class="mb-0 text-danger fw-bold">Esta acción no se puede deshacer.</p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+        <button type="button" class="btn btn-danger" onclick="confirmarReset()">Sí, Eliminar Todo</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
 <script>
+    // ==========================================
+    // CONFIGURACIÓN: Reemplaza con tu URL
+    // ==========================================
     const API_URL = "https://manueln.pythonanywhere.com"; 
-    let estadoGlobal = null;
 
-    // --- 1. INICIALIZACIÓN ---
+    // Referencias al DOM
+    const loader = document.getElementById('loading-overlay');
+    const loaderText = document.getElementById('loading-text');
+    const appContainer = document.getElementById('app-container');
+    const statusMsg = document.getElementById('status-msg');
+    
+    // Instancia del modal (para cerrarlo por JS)
+    let modalResetInstancia;
+
     document.addEventListener("DOMContentLoaded", function() {
-        iniciar();
-
-        // Configurar botón principal para ABRIR el modal
-        const btnOpen = document.getElementById('btnOpenModal');
-        if (btnOpen) {
-            btnOpen.addEventListener('click', function() {
-                document.getElementById('modalConfirm').style.display = 'flex';
-            });
-        }
+        // Inicializar el modal de Bootstrap
+        const modalEl = document.getElementById('modalReset');
+        modalResetInstancia = new bootstrap.Modal(modalEl);
+        
+        // Cargar datos iniciales
+        cargarDatos(true);
     });
 
-    // --- 2. FUNCIONES DEL MODAL ---
-    function cerrarModal() {
-        document.getElementById('modalConfirm').style.display = 'none';
+    // Función: Mostrar/Ocultar Loader
+    function toggleLoader(show, text = "Cargando...") {
+        loaderText.innerText = text;
+        loader.style.display = show ? 'flex' : 'none';
+        if (!show) appContainer.style.display = 'block';
     }
 
-    async function confirmarReset() {
-        cerrarModal(); // Cerramos la ventana primero
-        mostrarEstado("⏳ Procesando reset...", "loading");
+    // 1. CARGAR DATOS (GET)
+    async function cargarDatos(esInicial = false) {
+        if (esInicial) toggleLoader(true);
 
         try {
-            const res = await fetch(`${API_URL}/reset`, { 
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' }
-            });
+            const response = await fetch(`${API_URL}/api/data?t=${Date.now()}`); // timestamp para evitar cache
+            if (!response.ok) throw new Error("Error de conexión con el servidor");
             
-            const data = await res.json();
-
-            if (data.status === 'success') {
-                await iniciar(true); // Recargamos manteniendo el mensaje
-                mostrarEstado("✅ ¡Semana reseteada correctamente!", "success");
-                setTimeout(() => { limpiarEstado(); }, 1000);
-            } else {
-                mostrarEstado("❌ Error: " + data.message, "error");
-            }
-        } catch (e) {
-            console.error(e);
-            mostrarEstado("❌ Error de conexión.", "error");
-        }
-    }
-
-    // --- 3. LOGICA PRINCIPAL (Carga y Renderizado) ---
-    async function iniciar(mantenerMensaje = false) {
-        if (!mantenerMensaje) mostrarEstado("Cargando datos...", "loading");
-        
-        try {
-            const res = await fetch(`${API_URL}/api/datos?v=${Date.now()}`);
-            if (!res.ok) throw new Error("Error backend");
-            
-            estadoGlobal = await res.json();
-            renderizar();
-            
-            if (!mantenerMensaje) limpiarEstado();
-            
+            const data = await response.json();
+            renderizarTabla(data);
         } catch (error) {
             console.error(error);
-            mostrarEstado("Error: No se pudo conectar.", "error");
+            alert("Error al cargar datos: " + error.message);
+        } finally {
+            if (esInicial) toggleLoader(false);
         }
     }
 
-    function renderizar() {
-        const app = document.getElementById('app');
-        const { empleados, dias, conteo, max_por_dia } = estadoGlobal;
+    // 2. RENDERIZAR TABLA
+    function renderizarTabla(data) {
+        const { dias, empleados, conteo, max_por_dia } = data;
 
-        let html = `<table><thead><tr><th>Colaborador</th>`;
-        dias.forEach(dia => {
-            const actual = conteo[dia] || 0;
-            const claseColor = actual >= max_por_dia ? "cupo-lleno" : "cupo-ok";
-            html += `<th>${dia} <br> <span class="${claseColor}" style="font-size:0.8em">(${actual}/${max_por_dia})</span></th>`;
-        });
-        html += `</tr></thead><tbody>`;
+        document.getElementById('max-text').textContent = max_por_dia;
 
-        const nombresOrdenados = Object.keys(empleados).sort();
-        nombresOrdenados.forEach(nombre => {
-            const diasAsistidos = empleados[nombre];
-            html += `<tr><td>${nombre}</td>`;
+        // Cabecera
+        const headRow = document.getElementById('table-head-row');
+        let headHTML = '<th class="text-start">Colaborador</th>';
+        dias.forEach(d => headHTML += `<th>${d}</th>`);
+        headRow.innerHTML = headHTML;
+
+        // Cuerpo
+        const body = document.getElementById('table-body');
+        let bodyHTML = '';
+        
+        // Ordenar alfabéticamente
+        const nombres = Object.keys(empleados).sort();
+
+        nombres.forEach(nombre => {
+            const diasAsignados = empleados[nombre];
+            bodyHTML += `<tr><td class="text-start fw-semibold">${nombre}</td>`;
+            
             dias.forEach(dia => {
-                const asiste = diasAsistidos.includes(dia);
-                const claseBtn = asiste ? 'presente' : '';
-                const textoBtn = asiste ? 'PRESENCIAL' : '-';
-                html += `<td><button class="btn-cell ${claseBtn}" onclick="toggle('${nombre}', '${dia}')">${textoBtn}</button></td>`;
+                const presente = diasAsignados.includes(dia);
+                const btnClass = presente ? 'btn-success' : 'btn-outline-secondary';
+                
+                bodyHTML += `
+                    <td>
+                        <button onclick="toggleEstado('${nombre}', '${dia}')" 
+                                class="btn btn-sm ${btnClass}" 
+                                style="width: 40px;">
+                            ${presente ? 'P' : '-'}
+                        </button>
+                    </td>`;
             });
-            html += `</tr>`;
+            bodyHTML += `</tr>`;
         });
-        html += `</tbody></table>`;
-        app.innerHTML = html;
+        body.innerHTML = bodyHTML;
+
+        // Pie (Contadores)
+        const footRow = document.getElementById('table-foot-row');
+        let footHTML = '<th class="text-start">Total</th>';
+        dias.forEach(d => {
+            const total = conteo[d] || 0;
+            const style = total > max_por_dia ? 'text-danger' : '';
+            footHTML += `<th class="${style}">${total}</th>`;
+        });
+        footRow.innerHTML = footHTML;
     }
 
-    async function toggle(empleado, dia) {
+    // 3. CAMBIAR ESTADO (POST /toggle)
+    async function toggleEstado(empleado, dia) {
+        mostrarStatus("Guardando...", "text-warning");
         try {
-            const res = await fetch(`${API_URL}/toggle`, {
+            const response = await fetch(`${API_URL}/toggle`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ empleado, dia })
             });
-            const data = await res.json();
 
-            if (data.status === 'success') {
-                estadoGlobal.empleados = data.empleados;
-                estadoGlobal.conteo = data.nuevo_conteo;
-                renderizar();
-                mostrarEstado("Guardado", "success");
-                setTimeout(() => limpiarEstado(), 1000);
+            if (response.ok) {
+                // Opción A: Recargar todo (más seguro)
+                await cargarDatos(false);
+                mostrarStatus("¡Guardado!", "text-success");
             } else {
-                alert("⚠️ " + data.message);
-                limpiarEstado();
+                const err = await response.json();
+                alert(err.error || "Error al guardar");
+                mostrarStatus("Error", "text-danger");
             }
-        } catch (error) {
-            console.error(error);
-            mostrarEstado("Error de conexión", "error");
+        } catch (e) {
+            console.error(e);
+            alert("Error de conexión");
         }
     }
 
-    function mostrarEstado(msg, tipo) {
-        const el = document.getElementById('status');
-        el.innerText = msg;
-        el.className = tipo; 
-        el.style.display = 'block';
+    // 4. RESETEAR SEMANA (POST /reset)
+    async function confirmarReset() {
+        modalResetInstancia.hide(); // Cerrar modal visualmente
+        toggleLoader(true, "Reseteando semana...");
+
+        try {
+            const response = await fetch(`${API_URL}/reset`, {
+                method: 'POST'
+            });
+            
+            if (response.ok) {
+                await cargarDatos(false); // Recargar tabla limpia
+                setTimeout(() => alert("Semana reseteada correctamente."), 200);
+            } else {
+                alert("Hubo un error al intentar resetear.");
+            }
+        } catch (e) {
+            console.error(e);
+            alert("Error de conexión al resetear.");
+        } finally {
+            toggleLoader(false);
+        }
     }
 
-    function limpiarEstado() {
-        const el = document.getElementById('status');
-        el.innerText = "";
-        el.className = "";
-        el.style.display = 'none';
+    // Helper para feedback visual pequeño
+    function mostrarStatus(texto, claseColor) {
+        statusMsg.innerText = texto;
+        statusMsg.className = "small fw-bold " + claseColor;
+        statusMsg.style.opacity = 1;
+        setTimeout(() => { statusMsg.style.opacity = 0; }, 2000);
     }
+
 </script>
+
 </body>
 </html>
