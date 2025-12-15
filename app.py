@@ -1,52 +1,52 @@
-from flask import Flask, render_template, request, redirect, url_for
+from flask import Flask, request, jsonify
+from flask_cors import CORS
 import json
 import os
 from collections import Counter
 
 app = Flask(__name__)
 
+# 1. HABILITAR CORS (Crucial para Google Sites)
+CORS(app)
+
 ARCHIVO_JSON = "data.json"
+# Usamos rutas absolutas para evitar errores en la nube
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+RUTA_COMPLETA_JSON = os.path.join(BASE_DIR, ARCHIVO_JSON)
 
 dias = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes"]
 MAX_POR_DIA = 8
-
 
 # ================================
 #   PERSISTENCIA
 # ================================
 
 def datos_iniciales():
-    """Se usa si no existe data.json."""
     return {
-        "Esteban V.": [],
-        "Celeste A.": [],
-        "Sebastián A.": [],
-        "Demerith G.": [],
-        "Laura V.": [],
-        "Pablo C.": [],
-        "Agustin P.": [],
-        "Marcos S.": [],
-        "Marina D.": [],
-        "Mariana M.": [],
-        "María E.": [],
-        "Mauro G.": [],
-        "Agustin G.": [],
+        "Esteban V.": [], "Celeste A.": [], "Sebastián A.": [],
+        "Demerith G.": [], "Laura V.": [], "Pablo C.": [],
+        "Agustin P.": [], "Marcos S.": [], "Marina D.": [],
+        "Mariana M.": [], "María E.": [], "Mauro G.": [],
+        "Agustin G.": []
     }
 
 def cargar_datos():
-    if os.path.exists(ARCHIVO_JSON):
-        with open(ARCHIVO_JSON, "r", encoding="utf-8") as f:
-            return json.load(f)
+    if os.path.exists(RUTA_COMPLETA_JSON):
+        with open(RUTA_COMPLETA_JSON, "r", encoding="utf-8") as f:
+            try:
+                return json.load(f)
+            except:
+                return datos_iniciales()
     data = datos_iniciales()
     guardar_datos(data)
     return data
 
 def guardar_datos(data):
-    with open(ARCHIVO_JSON, "w", encoding="utf-8") as f:
+    with open(RUTA_COMPLETA_JSON, "w", encoding="utf-8") as f:
         json.dump(data, f, indent=4, ensure_ascii=False)
 
+# Cargar en memoria al iniciar
 empleados = cargar_datos()
-
 
 # ================================
 #   CÁLCULOS
@@ -59,56 +59,61 @@ def contar_asistencia():
             c[d] += 1
     return c
 
-
 # ================================
-#   RUTAS
+#   RUTAS (API JSON)
 # ================================
 
-@app.route("/")
-def contratos():
+@app.route("/api/datos", methods=["GET"])
+def obtener_datos():
+    """Esta ruta le entrega al Google Site el estado actual de la tabla"""
     conteo = contar_asistencia()
-    return render_template(
-        "Gerencia_Contratos.html",
-        empleados=empleados,
-        dias=dias,
-        conteo=conteo,
-        max_por_dia=MAX_POR_DIA
-    )
+    return jsonify({
+        "empleados": empleados,
+        "conteo": conteo,
+        "dias": dias,
+        "max_por_dia": MAX_POR_DIA
+    })
 
 @app.route("/toggle", methods=["POST"])
 def toggle():
-    empleado = request.form["empleado"]
-    dia = request.form["dia"]
+    # Recibimos JSON en lugar de Form Data
+    data = request.json
+    empleado = data.get("empleado")
+    dia = data.get("dia")
 
-    # Validaciones básicas
-    if empleado not in empleados:
-        return redirect(url_for("contratos"))
-    if dia not in dias:
-        return redirect(url_for("contratos"))
+    if empleado not in empleados or dia not in dias:
+        return jsonify({"status": "error", "message": "Datos inválidos"}), 400
 
     lista = empleados[empleado]
+    conteo_actual = contar_asistencia()
 
-    # Si vamos a AGREGAR presencialidad, validar cupo
-    if dia not in lista:
-        if contar_asistencia().get(dia, 0) >= MAX_POR_DIA:
-            return redirect(url_for("contratos"))
-        lista.append(dia)
+    # Lógica de toggle
+    if dia in lista:
+        lista.remove(dia) # Quitar asistencia
+        accion = "removido"
     else:
-        # Si ya estaba, quitar (siempre permitido)
-        lista.remove(dia)
+        # Validar cupo antes de agregar
+        if conteo_actual.get(dia, 0) >= MAX_POR_DIA:
+             return jsonify({"status": "error", "message": f"Cupo lleno para el {dia}"}), 400
+        lista.append(dia)
+        accion = "agregado"
 
     guardar_datos(empleados)
-    return redirect(url_for("contratos"))
+    
+    # Devolvemos el nuevo estado para que el frontend se actualice solo
+    return jsonify({
+        "status": "success", 
+        "accion": accion,
+        "nuevo_conteo": contar_asistencia(),
+        "empleados": empleados
+    })
 
 @app.route("/reset", methods=["POST"])
 def reset():
-    # Reset “todo blanco”
     for emp in empleados:
         empleados[emp] = []
     guardar_datos(empleados)
-    return redirect(url_for("contratos"))
-
+    return jsonify({"status": "success", "message": "Tabla reseteada"})
 
 if __name__ == "__main__":
-    # Para producción interna, ideal:
-    app.run(host="0.0.0.0", debug=False)
+    app.run(debug=True)

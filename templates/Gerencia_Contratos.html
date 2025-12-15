@@ -1,89 +1,230 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <title>Gestión de Home Office - Contratos</title>
+<meta charset="UTF-8">
+<style>
+    /* --- ESTILOS GENERALES --- */
+    body {
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        padding: 20px;
+        background-color: #ffffff;
+    }
+    h2 { color: #333; border-bottom: 2px solid #007bff; padding-bottom: 10px; }
 
-    <link
-        href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
-        rel="stylesheet"
-    >
+    /* --- TABLA --- */
+    .tabla-container { overflow-x: auto; margin-bottom: 60px; /* Espacio para no tapar con el botón */ }
+    table { width: 100%; border-collapse: collapse; margin-top: 15px; box-shadow: 0 0 20px rgba(0, 0, 0, 0.1); }
+    th, td { padding: 12px 15px; text-align: center; border-bottom: 1px solid #ddd; }
+    th { background-color: #f8f9fa; color: #333; font-weight: bold; border-top: 3px solid #007bff; }
+    td:first-child { text-align: left; font-weight: 600; color: #555; background-color: #fff; min-width: 150px; }
+
+    /* --- BOTONES DE ASISTENCIA --- */
+    .btn-cell { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; background-color: #fff; cursor: pointer; transition: all 0.2s; font-size: 14px; }
+    .btn-cell:hover { background-color: #e9ecef; }
+    .presente { background-color: #28a745; color: white; border-color: #28a745; font-weight: bold; }
+    .presente:hover { background-color: #218838; }
+
+    /* --- INDICADORES Y STATUS --- */
+    .cupo-lleno { color: #dc3545; } 
+    .cupo-ok { color: #28a745; }   
+    
+    #status { margin-bottom: 15px; font-weight: bold; padding: 10px; border-radius: 4px; display: none; text-align: center; }
+    .loading { background-color: #e2e6ea; color: #007bff; display: block !important; }
+    .error { background-color: #f8d7da; color: #721c24; display: block !important; }
+    .success { background-color: #d4edda; color: #155724; display: block !important; }
+
+    /* --- BOTÓN PRINCIPAL RESET --- */
+    .btn-reset {
+        margin-top: 20px;
+        background-color: #dc3545;
+        color: white;
+        border: none;
+        padding: 10px 20px;
+        border-radius: 5px;
+        cursor: pointer;
+        float: right;
+        font-size: 14px;
+        font-weight: bold;
+    }
+    .btn-reset:hover { background-color: #c82333; }
+
+    /* --- MODAL PROPIO (CSS) --- */
+    .modal-overlay {
+        position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+        background-color: rgba(0, 0, 0, 0.5); /* Fondo oscuro transparente */
+        display: none; /* Oculto por defecto */
+        justify-content: center; align-items: center;
+        z-index: 1000;
+    }
+    
+    .modal-box {
+        background: white; padding: 25px; border-radius: 8px;
+        box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+        text-align: center; max-width: 300px; width: 90%;
+    }
+
+    .modal-buttons { margin-top: 20px; display: flex; justify-content: space-around; }
+
+    .btn-cancelar { background-color: #6c757d; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; }
+    .btn-confirmar { background-color: #dc3545; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-weight: bold;}
+    
+</style>
 </head>
-<body class="bg-light">
+<body>
 
-<div class="container py-4">
+    <h2>Gestión de Contratos</h2>
+    
+    <div id="status"></div>
 
-    <div class="d-flex justify-content-between align-items-center mb-3">
-        <div>
-            <h1 class="h3 mb-1">Gerencia: CONTRATOS</h1>
-            <p class="text-muted mb-0">Marcá o desmarcá presencialidad por día (máximo {{ max_por_dia }} por día).</p>
-        </div>
-
-        <form method="POST" action="/reset" class="d-inline">
-            <button type="submit"
-                    class="btn btn-outline-danger btn-sm"
-                    onclick="return confirm('¿Seguro que querés resetear toda la semana? Esta acción no se puede deshacer.')">
-                Reset semana
-            </button>
-        </form>
+    <div class="tabla-container">
+        <div id="app"></div>
     </div>
 
-    <div class="card shadow-sm">
-        <div class="card-body">
+    <button id="btnOpenModal" class="btn-reset">⚠ Resetear Semana</button>
 
-            <div class="text-muted small mb-2">
-                <span class="badge bg-success">P</span> Presencial
-                <span class="badge bg-secondary ms-2">H</span> Home
+    <div id="modalConfirm" class="modal-overlay">
+        <div class="modal-box">
+            <h3 style="margin-top:0; color:#dc3545;">¿Estás seguro?</h3>
+            <p style="color:#666; font-size:14px;">Se borrarán <b>todas</b> las asistencias de la semana. Esta acción no se puede deshacer.</p>
+            <div class="modal-buttons">
+                <button class="btn-cancelar" onclick="cerrarModal()">Cancelar</button>
+                <button class="btn-confirmar" onclick="confirmarReset()">Sí, Eliminar Todo</button>
             </div>
-
-            <div class="table-responsive">
-                <table class="table table-bordered align-middle text-center">
-                    <thead class="table-light">
-                    <tr>
-                        <th class="text-start">Empleado</th>
-                        {% for d in dias %}
-                            <th>{{ d }}</th>
-                        {% endfor %}
-                    </tr>
-                    </thead>
-
-                    <tbody>
-                    {% for nombre_empleado, dias_empleado in empleados.items() %}
-                        <tr>
-                            <td class="text-start fw-semibold">{{ nombre_empleado }}</td>
-
-                            {% for d in dias %}
-                                <td>
-                                    <form method="POST" action="/toggle" class="d-inline">
-                                        <input type="hidden" name="empleado" value="{{ nombre_empleado }}">
-                                        <input type="hidden" name="dia" value="{{ d }}">
-
-                                        <button type="submit"
-                                                class="btn btn-sm {% if d in dias_empleado %}btn-success{% else %}btn-outline-secondary{% endif %}">
-                                            {% if d in dias_empleado %}P{% else %}H{% endif %}
-                                        </button>
-                                    </form>
-                                </td>
-                            {% endfor %}
-                        </tr>
-                    {% endfor %}
-                    </tbody>
-
-                    <tfoot class="table-secondary">
-                    <tr>
-                        <th class="text-start">Total presentes</th>
-                        {% for d in dias %}
-                            <th>{{ conteo.get(d, 0) }}</th>
-                        {% endfor %}
-                    </tr>
-                    </tfoot>
-                </table>
-            </div>
-
         </div>
     </div>
 
-</div>
+<script>
+    const API_URL = "https://manueln.pythonanywhere.com"; 
+    let estadoGlobal = null;
 
+    // --- 1. INICIALIZACIÓN ---
+    document.addEventListener("DOMContentLoaded", function() {
+        iniciar();
+
+        // Configurar botón principal para ABRIR el modal
+        const btnOpen = document.getElementById('btnOpenModal');
+        if (btnOpen) {
+            btnOpen.addEventListener('click', function() {
+                document.getElementById('modalConfirm').style.display = 'flex';
+            });
+        }
+    });
+
+    // --- 2. FUNCIONES DEL MODAL ---
+    function cerrarModal() {
+        document.getElementById('modalConfirm').style.display = 'none';
+    }
+
+    async function confirmarReset() {
+        cerrarModal(); // Cerramos la ventana primero
+        mostrarEstado("⏳ Procesando reset...", "loading");
+
+        try {
+            const res = await fetch(`${API_URL}/reset`, { 
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+            });
+            
+            const data = await res.json();
+
+            if (data.status === 'success') {
+                await iniciar(true); // Recargamos manteniendo el mensaje
+                mostrarEstado("✅ ¡Semana reseteada correctamente!", "success");
+                setTimeout(() => { limpiarEstado(); }, 1000);
+            } else {
+                mostrarEstado("❌ Error: " + data.message, "error");
+            }
+        } catch (e) {
+            console.error(e);
+            mostrarEstado("❌ Error de conexión.", "error");
+        }
+    }
+
+    // --- 3. LOGICA PRINCIPAL (Carga y Renderizado) ---
+    async function iniciar(mantenerMensaje = false) {
+        if (!mantenerMensaje) mostrarEstado("Cargando datos...", "loading");
+        
+        try {
+            const res = await fetch(`${API_URL}/api/datos?v=${Date.now()}`);
+            if (!res.ok) throw new Error("Error backend");
+            
+            estadoGlobal = await res.json();
+            renderizar();
+            
+            if (!mantenerMensaje) limpiarEstado();
+            
+        } catch (error) {
+            console.error(error);
+            mostrarEstado("Error: No se pudo conectar.", "error");
+        }
+    }
+
+    function renderizar() {
+        const app = document.getElementById('app');
+        const { empleados, dias, conteo, max_por_dia } = estadoGlobal;
+
+        let html = `<table><thead><tr><th>Colaborador</th>`;
+        dias.forEach(dia => {
+            const actual = conteo[dia] || 0;
+            const claseColor = actual >= max_por_dia ? "cupo-lleno" : "cupo-ok";
+            html += `<th>${dia} <br> <span class="${claseColor}" style="font-size:0.8em">(${actual}/${max_por_dia})</span></th>`;
+        });
+        html += `</tr></thead><tbody>`;
+
+        const nombresOrdenados = Object.keys(empleados).sort();
+        nombresOrdenados.forEach(nombre => {
+            const diasAsistidos = empleados[nombre];
+            html += `<tr><td>${nombre}</td>`;
+            dias.forEach(dia => {
+                const asiste = diasAsistidos.includes(dia);
+                const claseBtn = asiste ? 'presente' : '';
+                const textoBtn = asiste ? 'PRESENCIAL' : '-';
+                html += `<td><button class="btn-cell ${claseBtn}" onclick="toggle('${nombre}', '${dia}')">${textoBtn}</button></td>`;
+            });
+            html += `</tr>`;
+        });
+        html += `</tbody></table>`;
+        app.innerHTML = html;
+    }
+
+    async function toggle(empleado, dia) {
+        try {
+            const res = await fetch(`${API_URL}/toggle`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ empleado, dia })
+            });
+            const data = await res.json();
+
+            if (data.status === 'success') {
+                estadoGlobal.empleados = data.empleados;
+                estadoGlobal.conteo = data.nuevo_conteo;
+                renderizar();
+                mostrarEstado("Guardado", "success");
+                setTimeout(() => limpiarEstado(), 1000);
+            } else {
+                alert("⚠️ " + data.message);
+                limpiarEstado();
+            }
+        } catch (error) {
+            console.error(error);
+            mostrarEstado("Error de conexión", "error");
+        }
+    }
+
+    function mostrarEstado(msg, tipo) {
+        const el = document.getElementById('status');
+        el.innerText = msg;
+        el.className = tipo; 
+        el.style.display = 'block';
+    }
+
+    function limpiarEstado() {
+        const el = document.getElementById('status');
+        el.innerText = "";
+        el.className = "";
+        el.style.display = 'none';
+    }
+</script>
 </body>
 </html>
