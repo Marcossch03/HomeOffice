@@ -23,11 +23,22 @@ MAX_POR_DIA = 8
 
 def datos_iniciales():
     return {
-        "Esteban V.": [], "Celeste A.": [], "Sebastián A.": [],
-        "Demerith G.": [], "Laura V.": [], "Pablo C.": [],
-        "Agustin P.": [], "Marcos S.": [], "Marina D.": [],
-        "Mariana M.": [], "María E.": [], "Mauro G.": [],
-        "Agustin G.": []
+        "Esteban V.": [],
+        "Celeste A.": [],
+        "Sebastián A.": [],
+        "Demerith G.": [],
+        "Laura V.": [],
+        "Pablo C.": [],
+        "Agustin P.": [],
+        "Marcos S.": [],
+        "Jonathan A.": [],
+        "Samanta S.": [],
+        "Veronica T.": [],
+        "Marina D.": [],
+        "Mariana M.": [],
+        "María E.": [],
+        "Mauro G.": [],
+        "Agustin G.": [],
     }
 
 def cargar_datos():
@@ -99,10 +110,10 @@ def toggle():
         accion = "agregado"
 
     guardar_datos(empleados)
-    
+
     # Devolvemos el nuevo estado para que el frontend se actualice solo
     return jsonify({
-        "status": "success", 
+        "status": "success",
         "accion": accion,
         "nuevo_conteo": contar_asistencia(),
         "empleados": empleados
