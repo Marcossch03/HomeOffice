@@ -15,7 +15,7 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 RUTA_COMPLETA_JSON = os.path.join(BASE_DIR, ARCHIVO_JSON)
 
 dias = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes"]
-MAX_POR_DIA = 8
+MAX_POR_DIA = 18
 
 # ================================
 #   PERSISTENCIA
@@ -23,22 +23,11 @@ MAX_POR_DIA = 8
 
 def datos_iniciales():
     return {
-        "Esteban V.": [],
-        "Celeste A.": [],
-        "Sebastián A.": [],
-        "Demerith G.": [],
-        "Laura V.": [],
-        "Pablo C.": [],
-        "Agustin P.": [],
-        "Marcos S.": [],
-        "Jonathan A.": [],
-        "Samanta S.": [],
-        "Veronica T.": [],
-        "Marina D.": [],
-        "Mariana M.": [],
-        "María E.": [],
-        "Mauro G.": [],
-        "Agustin G.": [],
+       "(Cont.) - Esteban V.", "(Cont.) - Marcos S.", "(Cont.) - Jonathan A.", "(Cont.) - Samanta S.", "(Cont.) - Veronica T.", "(Cont.) - Marina D.", "(Cont.) - Mauro G.", "(Cont.) - Agustin G.", 
+        "(Cont.) - Celeste A.", "(Cont.) - Sebastián A.", "(Cont.) - Julia D.", "(Cont.) - Pablo C.", "(Cont.) - Agustin P.", "(Cont.) - Mariana M.", "(Cont.) - María E.",      
+        "Jovita E.", "Micaela R.", "Sebastian P.", "Laura R.", 
+        "Gabriel G.", "Marcos C.", "Flor S.", "Lucas A.", 
+        "Ezequiel V.", "Guido L.", "Romina F.", "Franco R.",
     }
 
 def cargar_datos():
@@ -127,4 +116,5 @@ def reset():
     return jsonify({"status": "success", "message": "Tabla reseteada"})
 
 if __name__ == "__main__":
+
     app.run(debug=True)
